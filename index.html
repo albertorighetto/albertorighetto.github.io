@@ -24,10 +24,9 @@ body {
 <script src="jquery-3.6.4.min.js"></script>
 <script>
 var resources = [
-	["aaa", [2], [1, 1, 1]],
-	["PRJ", [2, 2, 2, 2, 1], [1, 2, 1]],
+	["REC", [2], [1, 2]],
+	["PRJ", [2, 2, 1], [1, 1, 2]],
 	["DSM", [1, 1], [2, 1]]
-	//["REC", [1], [1, 2]]
 ];
 $( document ).ready(function () {
 
@@ -47,12 +46,13 @@ $( document ).ready(function () {
 	}
 	
 	var screens = resources.length;
-	$('#stats').append("Schermi: " + screens);
+	$('#stats').append("Screens: " + screens);
 	resources.forEach(screen => {
 		var links = screen[1].reduce((a, b) => a + b, 0);
+		var out_links = screen[1].reduce((a, b) => a + "+"+ b);
 		
-		$('#stats').append("<br>" + screen[0] +  ": out links=" + links);
-		$('#stats').append(" - layers cap="+ screen[2]);
+		$('#stats').append("<br>" + screen[0] +  ": out links=" + links + " (" + out_links + ")");
+		$('#stats').append(" - layers capacity="+ screen[2]);
 	});
 
 	//https://medialab.github.io/iwanthue/
