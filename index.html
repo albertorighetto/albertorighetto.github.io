@@ -3,7 +3,8 @@
 <style>
 table, th, td {
   border: 1px solid;
-  
+  border-collapse: collapse;
+  margin: 1em;
 }
 td {
   padding: 10px;
@@ -20,40 +21,197 @@ body {
     color: #f2f2f3;
     font-family: OpenSans,Helvetica Neue,Arial,Helvetica,sans-serif;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+.row {
+  display: flex;
+}
+
+.column-left {
+  flex: 50%;
+  padding: 10px;
+}
+.column-right {
+  flex: 50%;
+  padding: 10px;
+}
+
+.screens {
+  flex: 10%;
+  padding: 10px;
+}
+
+.layers {
+  flex: 10%;
+  padding: 10px;
+}
+
+.addOut {
+	border: 1px solid transparent;
+	cursor: pointer;
+	background: #49535b none;
+	color: hsla(0,0%,100%,.9);
+	font-family: OpenSans,Helvetica Neue,Arial,Helvetica,sans-serif;
+	padding: 0.5em;
+  text-transform: none;
+  text-shadow: none;
+  font-weight: 400;
+  line-height: 1em;
+  font-style: normal;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 0.2rem;
+  margin: 0.1em;
+}
+
+.addLayer {
+	border: 1px solid transparent;
+	cursor: pointer;
+	background: #49535b none;
+	color: hsla(0,0%,100%,.9);
+	font-family: OpenSans,Helvetica Neue,Arial,Helvetica,sans-serif;
+	padding: 0.5em;
+  text-transform: none;
+  text-shadow: none;
+  font-weight: 400;
+  line-height: 1em;
+  font-style: normal;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 0.2rem;
+  margin: 0.1em;
+}
+
+.cap1 {
+	min-width: 3em;
+	background-color: rgb(28, 11, 44);
+	font-size: .75rem;
+	display: inline-block;
+    line-height: 1;
+    vertical-align: baseline;
+    margin: 0 0.16666667em;
+    padding: 0.2em 0.4em;
+    color: hsla(0,0%,100%,.8);
+	border: 0 solid transparent;
+    border-radius: 0.2rem;
+}
+
+.cap2 {
+	min-width: 3em;
+	background-color: rgb(67, 27, 106);
+	font-size: .75rem;
+	display: inline-block;
+    line-height: 1;
+    vertical-align: baseline;
+    margin: 0 0.16666667em;
+    padding: 0.2em 0.4em;
+    color: hsla(0,0%,100%,.8);
+	  border: 0 solid transparent;
+    border-radius: 0.2rem;
+}
+
+#screens_table {
+  width: 100%;
+  border: 0 solid transparent;
+   border-collapse: collapse;
+}
+
+#screens_table td {
+  width: 33%;
+  border: 0 solid transparent;
+}
+
+#screens_table tr {
+  width: 33%;
+  border: 1px solid white;
+}
 </style>
+<link href="switcher.css" rel="stylesheet">
 <script src="jquery-3.6.4.min.js"></script>
+<script src="jquery.switcher.min.js"></script>
+
 <script>
-var resources = [
-	["REC", [2], [1, 2]],
-	["PRJ", [2, 2, 1], [1, 1, 2]],
-	["DSM", [1, 1], [2, 1]]
-];
+
+var screens_data = {}
+
+//{"op":"get","path":"DeviceObject/preconfig/resources/new/$screen/@items/1/$layer/@items/4/control/@props/capability"}\04
 $( document ).ready(function () {
 
-	var vpuQuantity = 3;
-	// Build VPU tables
-	for (var vpu = 1; vpu <= vpuQuantity; vpu++) {
-		var table = $('<table></table>');
-		for (var i = 1; i <= 8; i++) {
-			row = $('<tr id="' + i + '"></tr>');
-			for (var j = 1; j <= 8; j++) {
-				var rowData = $('<td id="' + vpu + '-' + i + '-' + j + '"></td>').addClass('bar').text('');
-				row.append(rowData);
-			}
-			table.append(row);
-		}
-		$('#vpu' + vpu).append(table);
+  compute_vpu();
+
+  var html = '<table id="screens_table">';
+	// Build screens/layers buttons
+	for(var i = 1; i <= 24; i++) {
+		html+= '<tr id="s' + i + '"><td><div class="form-check form-check-inline">';
+		html+= '<input class="form-check-input" type="checkbox" value="on" id="s' + i + '_toggle" /><br /><label for="s' + i + '_toggle">Screen ' + i + '</label></div></td>';
+    html+=	'<td><button class="addOut O1">+ Out <span class="cap1">1</span></button><button class="addOut O2">+ Out <span class="cap2">2</span></button></td>';
+    html+=	'<td><button class="addLayer L1">+ Layer <span class="cap1">1</span></button><button class="addLayer L2">+ Layer <span class="cap2">2</span></button></td></tr>';
+  }
+  html+= "</table>";
+  $(".column-left").append(html);
+
+  for(var i = 1; i <= 24; i++) {
+    $("#s" + i + " .L1").click(function() {
+        var id = $(this).parent().parent().attr('id');
+        if($("#" + id + "_toggle").is(':checked')) {
+					//alert($(this).parent().attr('id') + " .addLayer 1");
+          addLayer(id, 1);
+				}
+        compute_vpu();
+			});
+		$("#s" + i + " .L2").click(function() {
+      var id = $(this).parent().parent().attr('id');
+      if($("#" + id + "_toggle").is(':checked')) {
+          //alert($(this).parent().attr('id') + " .addLayer 1");
+          addLayer(id, 2);
+        }
+        compute_vpu();
+			});
+      $("#s" + i + " .O1").click(function() {
+          var id = $(this).parent().parent().attr('id');
+          if($("#" + id + "_toggle").is(':checked')) {
+  					//alert($(this).parent().attr('id') + " .addLayer 1");
+            addOutput(id, 1);
+  				}
+          compute_vpu();
+  			});
+  		$("#s" + i + " .O2").click(function() {
+        var id = $(this).parent().parent().attr('id');
+        if($("#" + id + "_toggle").is(':checked')) {
+            //alert($(this).parent().attr('id') + " .addLayer 1");
+            addOutput(id, 2);
+          }
+          compute_vpu();
+  			});
+    $("#s" + i + "_toggle").change(function() {
+        screen_id = parseInt($(this).attr('id').slice(1, -7), 10);
+        if(this.checked) {
+          screens_data["s" + screen_id] = {
+            id: screen_id,
+            label: "SCR " + screen_id,
+            links: [],
+            layers: []
+          }
+        } else {
+          delete screens_data["s" + screen_id];
+        }
+        compute_vpu();
+      });
 	}
-	
-	var screens = resources.length;
-	$('#stats').append("Screens: " + screens);
-	resources.forEach(screen => {
-		var links = screen[1].reduce((a, b) => a + b, 0);
-		var out_links = screen[1].reduce((a, b) => a + "+"+ b);
-		
-		$('#stats').append("<br>" + screen[0] +  ": out links=" + links + " (" + out_links + ")");
-		$('#stats').append(" - layers capacity="+ screen[2]);
-	});
+
+
+  function addLayer(id, capacity) {
+    screens_data[id].layers.push(capacity);
+	}
+
+  function addOutput(id, capacity) {
+    screens_data[id].links.push(capacity);
+	}
+
+
 
 	//https://medialab.github.io/iwanthue/
 	var colors = ["#5ecee9",
@@ -76,135 +234,139 @@ $( document ).ready(function () {
 		"#c0c9db",
 		"#b8d3cd",
 		"#e0c7ce"];
-	
-	var row = 1;
-	var column = 1;
-	var vpu = 1;
-	var color_id = 0;
-	
+
+
+
 	function useCell(vpu, row, column, screen, layer, color) {
 		$('#' + vpu + '-' + row + '-' + column).css("background-color", color);
 		$('#' + vpu + '-' + row + '-' + column).html('<p class="layer">S' + screen + '<br/>L' + layer + '</p>');
 	}
-	
+
 	function isInsideOutputLinks(column, row, out_links, layer_capacity, optimized_mode) {
 		if(column + out_links - 1 > 8) {
 			return false; // More than the available output links
 		}
 		return true;
 	}
-	
+
 	function isInsideInputLinks(row, column, out_links, layer_capacity, optimized_mode) {
 		if(out_links > 4 && !optimized_mode) {
 			layer_capacity *= 2;
 		}
-		console.log(row + layer_capacity);
+		//console.log(row + layer_capacity);
 		if(row + layer_capacity - 1 > 8) {
 			return false; // More than the available input links/layer resources
 		}
 		return true;
 	}
-	
-	for (screen_id = 0; screen_id < resources.length; screen_id++) {
-		var screen = resources[screen_id];
-		var name = screen[0];
-		var outputs = screen[1];
-		var out_links = outputs.reduce((a, b) => a + b, 0);
-		var layers = screen[2].reverse();
-		var in_links = layers.reduce((a, b) => a + b, 0);
-		var layer_id = 1;
-		var optimized_mode = layers.includes(1) ? false : true;
-		
-		// We are working inside a screen, let's go layer by layer
-		while(layers.length > 0) {
-			layer_capacity = layers.pop(); // Get layer capacity
-			color = colors[color_id++];	// Background color for the cells
-			
-			
-			//TODO: GESTIRE 8+ OUTPUT LINKS O ATTRAVERSAMENTO VPU CON OUTPUT LINKS
-			if(!isInsideInputLinks(row, column, out_links, layer_capacity, optimized_mode)) {
-				vpu++;
-				row = 1;
-				column = 1;
-			}
-			// Fill VPU table cells from left to right
-			for(link = 1; link <= out_links; link++) {
-				useCell(vpu, row, column+link-1, screen_id+1, layer_id, color); // Use the first available cell
-				if(layer_capacity == 2) { useCell(vpu, row+1, column+link-1, screen_id+1, layer_id, color); } // Double height because of capacity 2, use also another row
-				
-				if(link == 4 && !optimized_mode) { // We crossed the scaling engine boundary and we aren't in optimized mode, 
-					layer_capacity == 2 ? row+= 2 : row++; // We must use another row or 2
-				}
-			}
-			
-			layer_capacity == 2 ? row+= 2 : row++; // Done with this layer, set the next available row according to layer capacity
-			layer_id++;
-		}
-		
-		column+= out_links; // Done with this screen, set the next available column
-		if(column > 8) {
-			vpu++;
-			row = 1;
-			column = 1;
-		}
-		/*
-		if(out_links < 5) {
-			layer_id = 1;
-			while(layers.length > 0) {
-				layer_capacity = layers.pop();
-				for(i = row; i < row + layer_capacity; i++) {
-					for(j = column; j < column + out_links; j++) {
-						$('#'+i+'-'+j).css("background-color", colors[color]);
-						$('#'+i+'-'+j).html('<p class="layer">S'+(screen_id+1)+'<br/>L'+layer_id+'</p>');
-					}
-				}
-				color++;
-				row+= layer_capacity;
-				layer_id++;
-			}
-		}
-		
-		if(out_links >= 5 && out_links <= 8) {
-			layer_id = 1;
-			while(layers.length > 0) {
-				layer_capacity = layers.pop();
-				for(i = row; i < row + layer_capacity; i++) {                 ////CAMBIARE TENENDO CONTO DELL'A CAPO DEI LAYER 2 E DEL MISTO 1+2
-					for(j = column; j < column + out_links; j++) {
-						if(j == column + 4) {
-							i++;
-							row+= layer_capacity;
-						}
-						$('#'+i+'-'+j).css("background-color", colors[color]);
-						$('#'+i+'-'+j).html('<p class="layer">S'+(screen_id+1)+'<br/>L'+layer_id+'</p>');
-					}
-				}
-				color++;
-				row+= layer_capacity;
-				layer_id++;
-			}
-		}
-		
-		column+= out_links;
-		*/
-		/*
-		for (i = column; i < column + links; i++) {
-			$('#'+row+'-'+i).css("background-color", colors[color]);
-			row++;
-			color++;
-		}
-		*/
-	}
+
+  function compute_vpu() {
+    const sorted = Object.keys(screens_data)
+      .sort()
+      .reduce((accumulator, key) => {
+        accumulator[key] = screens_data[key];
+
+        return accumulator;
+      }, {});
+    screens_data = sorted;
+
+    $('.vpus').empty();
+
+    $('#stats').empty();
+    $('#stats').append("Screens: " + Object.keys(screens_data).length);
+
+    for (const [screen, properties] of Object.entries(screens_data)) {
+      var links = properties.links.reduce((a, b) => a + b, 0);
+      //var total_out_links = out_links.reduce((a, b) => a + "+"+ b, 0);
+
+      $('#stats').append("<br>" + screen +  ": out links=" + links + " (" + properties.links.toString() + ")");
+      $('#stats').append(" - layers capacity="+ properties.layers.toString());
+    };
+
+    // Clear existing tables
+    var vpuQuantity = 3;
+  	// Build VPU tables
+  	for (var vpu = 1; vpu <= vpuQuantity; vpu++) {
+  		var table = $('<table></table>');
+  		for (var i = 1; i <= 8; i++) {
+  			row = $('<tr id="' + i + '"></tr>');
+  			for (var j = 1; j <= 8; j++) {
+  				var rowData = $('<td id="' + vpu + '-' + i + '-' + j + '"></td>').addClass('bar').text('');
+  				row.append(rowData);
+  			}
+  			table.append(row);
+  		}
+  		$('.vpus').append(table);
+  	}
+
+    var row = 1;
+  	var column = 1;
+  	var vpu = 1;
+  	var color_id = 0;
+
+  	for (const [screen, properties] of Object.entries(screens_data)) {
+      var id = properties.id;
+      var label = properties.label;
+      //var out_links = properties.links;
+      var layers = properties.layers.toReversed();
+  		//var screen = resources[screen_id];
+  		//var name = screen[0];
+  		//var outputs = screen[1];
+  		var out_links = properties.links.reduce((a, b) => a + b, 0);
+  		//var layers = screen[2].reverse();
+  		var in_links = properties.layers.reduce((a, b) => a + b, 0);
+  		var layer_id = 1;
+  		var optimized_mode = layers.includes(1) ? false : true;
+
+  		// We are working inside a screen, let's go layer by layer
+  		while(layers.length > 0) {
+  			layer_capacity = layers.pop(); // Get layer capacity
+  			color = colors[color_id++];	// Background color for the cells
+
+  			//TODO: GESTIRE 8+ OUTPUT LINKS O ATTRAVERSAMENTO VPU CON OUTPUT LINKS
+  			if(!isInsideInputLinks(row, column, out_links, layer_capacity, optimized_mode)) {
+  				vpu++;
+  				row = 1;
+  				column = 1;
+  			}
+  			// Fill VPU table cells from left to right
+  			for(link = 1; link <= out_links; link++) {
+          if(link == 5 && !optimized_mode) { // We crossed the scaling engine boundary and we aren't in optimized mode,
+  					layer_capacity == 2 ? row+= 2 : row++; // We must use another row or 2
+  				}
+
+          useCell(vpu, row, column+link-1, id, layer_id, color); // Use the first available cell
+  				if(layer_capacity == 2) { useCell(vpu, row+1, column+link-1, id, layer_id, color); } // Double height because of capacity 2, use also another row
+  			}
+
+  			layer_capacity == 2 ? row+= 2 : row++; // Done with this layer, set the next available row according to layer capacity
+  			layer_id++;
+  		}
+
+  		column+= out_links; // Done with this screen, set the next available column
+  		if(column > 8) {
+  			vpu++;
+  			row = 1;
+  			column = 1;
+  		}
+  	}
+  }
+
+	$(function(){
+	   $.switcher();
+	});
 });
 </script>
 
 </head>
-<div id="stats"></div>
-<hr/>
-<div id="vpu1"></div>
-<hr/>
-<div id="vpu2"></div>
-<hr/>
-<div id="vpu3"></div>
+<div class="row">
+	<div class="column-left">
+	</div>
+	<div class="column-right">
+    <div id="stats"></div>
+    <div class="vpus"></div>
+	</div>
+</div>
 <body>
 </body>
 </html>
