@@ -128,6 +128,10 @@ body {
   width: 33%;
   border: 1px solid white;
 }
+
+#download {
+  cursor: pointer;
+}
 </style>
 <link href="switcher.css" rel="stylesheet">
 <script src="jquery-3.6.4.min.js"></script>
@@ -139,6 +143,14 @@ var screens_data = {}
 
 //{"op":"get","path":"DeviceObject/preconfig/resources/new/$screen/@items/1/$layer/@items/4/control/@props/capability"}\04
 $( document ).ready(function () {
+  document.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+  document.addEventListener('drop', (e) => {
+      document.getElementById('file').files = e.dataTransfer.files;
+      e.preventDefault();
+      $('#file').trigger('change');
+  });
 
   compute_vpu();
 
@@ -146,7 +158,7 @@ $( document ).ready(function () {
 	// Build screens/layers buttons
 	for(var i = 1; i <= 24; i++) {
 		html+= '<tr id="s' + i + '"><td><div class="form-check form-check-inline">';
-		html+= '<input class="form-check-input" type="checkbox" value="on" id="s' + i + '_toggle" /><br /><label for="s' + i + '_toggle">Screen ' + i + '</label></div></td>';
+		html+= '<input class="form-check-input" type="checkbox" value="on" id="s' + i + '_toggle" name="s' + i + '_toggle" value="s' + i + '_toggle" /><br /><label for="s' + i + '_toggle">Screen ' + i + '</label></div></td>';
     html+=	'<td><button class="addOut O1">+ Out <span class="cap1">1</span></button><button class="addOut O2">+ Out <span class="cap2">2</span></button></td>';
     html+=	'<td><button class="addLayer L1">+ Layer <span class="cap1">1</span></button><button class="addLayer L2">+ Layer <span class="cap2">2</span></button></td></tr>';
   }
@@ -186,7 +198,7 @@ $( document ).ready(function () {
           }
           compute_vpu();
   			});
-    $("#s" + i + "_toggle").change(function() {
+    $("#s" + i + "_toggle").click(function() {
         screen_id = parseInt($(this).attr('id').slice(1, -7), 10);
         if(this.checked) {
           screens_data["s" + screen_id] = {
@@ -200,6 +212,8 @@ $( document ).ready(function () {
         }
         compute_vpu();
       });
+
+      //TODO: https://github.com/shaheenhyderk/slideon
 	}
 
 
@@ -208,7 +222,9 @@ $( document ).ready(function () {
 	}
 
   function addOutput(id, capacity) {
+    console.log(screens_data[id].links);
     screens_data[id].links.push(capacity);
+    console.log(screens_data[id].links);
 	}
 
 
@@ -253,7 +269,6 @@ $( document ).ready(function () {
 		if(out_links > 4 && !optimized_mode) {
 			layer_capacity *= 2;
 		}
-		//console.log(row + layer_capacity);
 		if(row + layer_capacity - 1 > 8) {
 			return false; // More than the available input links/layer resources
 		}
@@ -262,7 +277,7 @@ $( document ).ready(function () {
 
   function compute_vpu() {
     const sorted = Object.keys(screens_data)
-      .sort()
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
       .reduce((accumulator, key) => {
         accumulator[key] = screens_data[key];
 
@@ -286,12 +301,12 @@ $( document ).ready(function () {
     // Clear existing tables
     var vpuQuantity = 3;
   	// Build VPU tables
-  	for (var vpu = 1; vpu <= vpuQuantity; vpu++) {
+  	for (var vpu_id = 1; vpu_id <= vpuQuantity; vpu_id++) {
   		var table = $('<table></table>');
   		for (var i = 1; i <= 8; i++) {
-  			row = $('<tr id="' + i + '"></tr>');
+  			let row = $('<tr id="' + i + '"></tr>');
   			for (var j = 1; j <= 8; j++) {
-  				var rowData = $('<td id="' + vpu + '-' + i + '-' + j + '"></td>').addClass('bar').text('');
+  				var rowData = $('<td id="' + vpu_id + '-' + i + '-' + j + '"></td>').addClass('bar').text('');
   				row.append(rowData);
   			}
   			table.append(row);
@@ -299,61 +314,220 @@ $( document ).ready(function () {
   		$('.vpus').append(table);
   	}
 
-    var row = 1;
-  	var column = 1;
-  	var vpu = 1;
-  	var color_id = 0;
 
-  	for (const [screen, properties] of Object.entries(screens_data)) {
-      var id = properties.id;
-      var label = properties.label;
-      //var out_links = properties.links;
-      var layers = properties.layers.toReversed();
-  		//var screen = resources[screen_id];
-  		//var name = screen[0];
-  		//var outputs = screen[1];
-  		var out_links = properties.links.reduce((a, b) => a + b, 0);
-  		//var layers = screen[2].reverse();
-  		var in_links = properties.layers.reduce((a, b) => a + b, 0);
-  		var layer_id = 1;
-  		var optimized_mode = layers.includes(1) ? false : true;
+    // Start computing resource allocation on VPU cells
+    let row = 1;
+  	let column = 1;
+  	let vpu = 1;
+  	let color_id = 0;
 
-  		// We are working inside a screen, let's go layer by layer
-  		while(layers.length > 0) {
-  			layer_capacity = layers.pop(); // Get layer capacity
-  			color = colors[color_id++];	// Background color for the cells
+    let current_position = [1, 1, 1, 0]; // row, column, vpu, color_id
+    var screens_data_copy = deep_clone(screens_data); // Deep clone
+  	for (const [screen, properties] of Object.entries(screens_data_copy)) {
+      // UGLY CODE: remove exceeding links crossing VPU border
+      var part_exceeding_vpu = deep_clone(properties);
+      var exceeding = new Array();
 
-  			//TODO: GESTIRE 8+ OUTPUT LINKS O ATTRAVERSAMENTO VPU CON OUTPUT LINKS
-  			if(!isInsideInputLinks(row, column, out_links, layer_capacity, optimized_mode)) {
-  				vpu++;
-  				row = 1;
-  				column = 1;
-  			}
-  			// Fill VPU table cells from left to right
-  			for(link = 1; link <= out_links; link++) {
-          if(link == 5 && !optimized_mode) { // We crossed the scaling engine boundary and we aren't in optimized mode,
-  					layer_capacity == 2 ? row+= 2 : row++; // We must use another row or 2
-  				}
+      if(current_position[0] > 8) {
+        current_position[2]++;
+        current_position[0] = 1;
+        current_position[1] = 1;
+      }
+      if(current_position[1] > 8) {
+        current_position[2]++;
+        current_position[0] = 1;
+        current_position[1] = 1;
+      }
 
-          useCell(vpu, row, column+link-1, id, layer_id, color); // Use the first available cell
-  				if(layer_capacity == 2) { useCell(vpu, row+1, column+link-1, id, layer_id, color); } // Double height because of capacity 2, use also another row
-  			}
+      while(part_exceeding_vpu.links.reduce((a, b) => a + b, 0) + current_position[1] - 1 > 8) {
+        exceeding.push(part_exceeding_vpu.links.pop());
+      }
+      part_exceeding_vpu.links = exceeding;
 
-  			layer_capacity == 2 ? row+= 2 : row++; // Done with this layer, set the next available row according to layer capacity
-  			layer_id++;
-  		}
+      current_position = fill_VPU(screen, properties, current_position);
+      if(current_position[2] > vpuQuantity) {
+        console.log("VPU resources exceeded");
+        break;
+      }
+      if(current_position[2] == vpuQuantity) {
+        var limit_reached = false;
+        if (current_position[0] > 8) {
+          console.log("VPU resource limit reached: no more layers available");
+          limit_reached = true;
+        }
+        if(current_position[1] > 8) {
+          console.log("VPU resource limit reached: no more outputs available");
+          limit_reached = true;
+        }
+        if(limit_reached) {
+          break;
+        }
+      }
 
-  		column+= out_links; // Done with this screen, set the next available column
-  		if(column > 8) {
-  			vpu++;
-  			row = 1;
-  			column = 1;
-  		}
+      if(exceeding.length > 0) {
+        //console.log(part_exceeding_vpu)
+        //console.log(current_position)
+        current_position[3]-= part_exceeding_vpu.layers.length;
+        current_position = fill_VPU(screen, part_exceeding_vpu, current_position);
+      }
+      if(current_position[2] > vpuQuantity) {
+        console.log("Not enough VPUs");
+        break;
+      }
   	}
   }
 
+  function deep_clone(data) {
+    return JSON.parse(JSON.stringify(data));
+  }
+
+  function fill_VPU(screen, properties, current_position) {
+    var row = current_position[0];
+    var column = current_position[1];
+    var vpu = current_position[2];
+    var color_id = current_position[3];
+
+    if(screen == "s2") {
+      console.log(properties)
+    }
+
+    var id = properties.id;
+    var label = properties.label;
+    //var out_links = properties.links;
+    var layers = properties.layers.toReversed();
+    //var screen = resources[screen_id];
+    //var name = screen[0];
+    //var outputs = screen[1];
+    var out_links = properties.links.reduce((a, b) => a + b, 0);
+    //var layers = screen[2].reverse();
+    var in_links = properties.layers.reduce((a, b) => a + b, 0);
+    var layer_id = 1;
+    var optimized_mode = layers.includes(1) ? false : true;
+
+    // We are working inside a screen, let's go layer by layer
+    var has_layers = (layers.length > 0) ? true : false;
+
+		while(layers.length > 0) {
+			layer_capacity = layers.pop(); // Get layer capacity
+			color = colors[color_id++];	// Background color for the cells
+
+      if(row > 8) {
+        vpu++;
+        row = 1;
+        column = 1;
+      }
+      if(column > 8) {
+        vpu++;
+        row = 1;
+        column = 1;
+      }
+
+			//TODO: GESTIRE 8+ OUTPUT LINKS O ATTRAVERSAMENTO VPU CON OUTPUT LINKS
+			if(!isInsideInputLinks(row, column, out_links, layer_capacity, optimized_mode)) {
+				vpu++;
+				row = 1;
+				column = 1;
+			}
+
+			// Fill VPU table cells from left to right
+			for(link = 1; link <= out_links; link++) {
+        if(column + link - 1 > 8) {
+          //console.log("VPU border crossed");
+          continue;
+        }
+        if(link == 5 && !optimized_mode) { // We crossed the scaling engine boundary and we aren't in optimized mode,
+					layer_capacity == 2 ? row+= 2 : row++; // We must use another row or 2
+				}
+
+        useCell(vpu, row, column+link-1, id, layer_id, color); // Use the first available cell
+				if(layer_capacity == 2) { useCell(vpu, row+1, column+link-1, id, layer_id, color); } // Double height because of capacity 2, use also another row
+			}
+
+			layer_capacity == 2 ? row+= 2 : row++; // Done with this layer, set the next available row according to layer capacity
+			layer_id++;
+		}
+    if(has_layers) {
+      column+= out_links; // Done with this screen, set the next available column
+    }
+
+    current_position = [row, column, vpu, color_id];
+    return current_position;
+  }
+
+  function downloadConfig() {
+    var json = JSON.stringify(screens_data);
+    json = [json];
+    var blob1 = new Blob(json, { type: "text/plain;charset=utf-8" });
+    //Check the Browser.
+    var isIE = false || !!document.documentMode;
+    if (isIE) {
+        window.navigator.msSaveBlob(blob1, "screens_config.txt");
+    } else {
+        var url = window.URL || window.webkitURL;
+        link = url.createObjectURL(blob1);
+        var a = $("<a />");
+        a.attr("download", "screens_config.txt");
+        a.attr("href", link);
+        $("body").append(a);
+        a[0].click();
+        $("body").remove(a);
+    }
+  }
+
+  function restore_settings() {
+    $("input:checkbox").prop('checked', false);
+    for (const [screen, properties] of Object.entries(screens_data)) {
+      //$("#s" + properties.id + "_toggle").prop('checked', true);
+      //$("#s" + properties.id + "_toggle")
+      $("#s" + properties.id + "_toggle").prop('checked', true);
+      //checkbox.switcher('setValue', true);
+    }
+  }
+
+  function check_settings(settings) {
+    if(!settings) return false;
+    for (const [screen, properties] of Object.entries(settings)) {
+      if(!screen.match(/s[1-9]+/g)) return false;
+      if(!Object.hasOwn(properties, 'id')) return false;
+      if(!Object.hasOwn(properties, 'label')) return false;
+      if(!Object.hasOwn(properties, 'links')) return false;
+      if(!Object.hasOwn(properties, 'layers')) return false;
+    }
+    return true;
+  }
+
 	$(function(){
-	   $.switcher();
+	  //$.switcher();
+    $("#download").click(function(){downloadConfig()});
+
+    // Manage settings upload
+    document.forms['upload'].elements['file'].onchange = function(evt) {
+      if(!window.FileReader) return; // Browser is not compatible
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+          if(evt.target.readyState != 2) return;
+          if(evt.target.error) {
+              alert('Error while reading file');
+              return;
+          }
+          filecontent = evt.target.result;
+          //document.forms['upload'].elements['text'].value = evt.target.result;
+          var new_settings;
+          try {
+            new_settings = JSON.parse(evt.target.result);
+          } catch (error) {
+            //console.error(error);
+          }
+          if(check_settings(new_settings)) {
+            screens_data = new_settings;
+            restore_settings();
+            compute_vpu();
+          } else {
+            console.log("Invalid restore file");
+          }
+      };
+      reader.readAsText(evt.target.files[0]);
+    };
 	});
 });
 </script>
@@ -363,6 +537,16 @@ $( document ).ready(function () {
 	<div class="column-left">
 	</div>
 	<div class="column-right">
+    <div>
+      <p id="download">Download screens config</p>
+    </div>
+    <div>
+      <form id="upload">
+        <p>
+          Restore config: <input id="file" name="files" type="file" />
+        </p>
+      </form>
+    </div>
     <div id="stats"></div>
     <div class="vpus"></div>
 	</div>
