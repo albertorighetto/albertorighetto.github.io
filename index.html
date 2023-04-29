@@ -49,8 +49,8 @@ body {
   padding: 10px;
 }
 
-.addOut {
-	border: 1px solid transparent;
+.add {
+  border: 1px solid transparent;
 	cursor: pointer;
 	background: #49535b none;
 	color: hsla(0,0%,100%,.9);
@@ -67,8 +67,8 @@ body {
   margin: 0.1em;
 }
 
-.addLayer {
-	border: 1px solid transparent;
+button {
+  border: 1px solid transparent;
 	cursor: pointer;
 	background: #49535b none;
 	color: hsla(0,0%,100%,.9);
@@ -83,6 +83,18 @@ body {
   text-decoration: none;
   border-radius: 0.2rem;
   margin: 0.1em;
+}
+
+.addScreen {
+  cursor: default;
+}
+
+.addOut {
+
+}
+
+.addLayer {
+
 }
 
 .cap1 {
@@ -130,7 +142,7 @@ body {
 }
 
 #download {
-  cursor: pointer;
+  /*cursor: pointer;*/
 }
 </style>
 <link href="switcher.css" rel="stylesheet">
@@ -152,18 +164,41 @@ $( document ).ready(function () {
       $('#file').trigger('change');
   });
 
-  compute_vpu();
+  var vpuQuantity = 3;
+
+  compute_vpu(vpuQuantity);
 
   var html = '<table id="screens_table">';
 	// Build screens/layers buttons
 	for(var i = 1; i <= 24; i++) {
-		html+= '<tr id="s' + i + '"><td><div class="form-check form-check-inline">';
-		html+= '<input class="form-check-input" type="checkbox" value="on" id="s' + i + '_toggle" name="s' + i + '_toggle" value="s' + i + '_toggle" /><br /><label for="s' + i + '_toggle">Screen ' + i + '</label></div></td>';
-    html+=	'<td><button class="addOut O1">+ Out <span class="cap1">1</span></button><button class="addOut O2">+ Out <span class="cap2">2</span></button></td>';
-    html+=	'<td><button class="addLayer L1">+ Layer <span class="cap1">1</span></button><button class="addLayer L2">+ Layer <span class="cap2">2</span></button></td></tr>';
+		html+= '<tr id="s' + i + '"><td><div class="add addScreen form-check form-check-inline">';
+		html+= '<input class="form-check-input" type="checkbox" value="on" id="s' + i + '_toggle" name="s' + i + '_toggle" /><br /><label for="s' + i + '_toggle">Screen ' + i + '</label></div></td>';
+    html+=	'<td><button class="add addOut O1">+ Out <span class="cap1">1</span></button><button class="add addOut O2">+ Out <span class="cap2">2</span></button></td>';
+    html+=	'<td><button class="add addLayer L1">+ Layer <span class="cap1">1</span></button><button class="add addLayer L2">+ Layer <span class="cap2">2</span></button></td></tr>';
   }
   html+= "</table>";
   $(".column-left").append(html);
+
+  function addVPU() {
+    vpuQuantity++;
+    compute_vpu(vpuQuantity);
+  }
+
+  function removeVPU() {
+    vpuQuantity--;
+    if(vpuQuantity < 1) {
+      vpuQuantity = 1;
+    }
+    compute_vpu(vpuQuantity);
+  }
+
+  $("#addVPU").click(function() {
+    addVPU();
+  });
+
+  $("#removeVPU").click(function() {
+    removeVPU();
+  });
 
   for(var i = 1; i <= 24; i++) {
     $("#s" + i + " .L1").click(function() {
@@ -172,7 +207,7 @@ $( document ).ready(function () {
 					//alert($(this).parent().attr('id') + " .addLayer 1");
           addLayer(id, 1);
 				}
-        compute_vpu();
+        compute_vpu(vpuQuantity);
 			});
 		$("#s" + i + " .L2").click(function() {
       var id = $(this).parent().parent().attr('id');
@@ -180,7 +215,7 @@ $( document ).ready(function () {
           //alert($(this).parent().attr('id') + " .addLayer 1");
           addLayer(id, 2);
         }
-        compute_vpu();
+        compute_vpu(vpuQuantity);
 			});
       $("#s" + i + " .O1").click(function() {
           var id = $(this).parent().parent().attr('id');
@@ -188,7 +223,7 @@ $( document ).ready(function () {
   					//alert($(this).parent().attr('id') + " .addLayer 1");
             addOutput(id, 1);
   				}
-          compute_vpu();
+          compute_vpu(vpuQuantity);
   			});
   		$("#s" + i + " .O2").click(function() {
         var id = $(this).parent().parent().attr('id');
@@ -196,7 +231,7 @@ $( document ).ready(function () {
             //alert($(this).parent().attr('id') + " .addLayer 1");
             addOutput(id, 2);
           }
-          compute_vpu();
+          compute_vpu(vpuQuantity);
   			});
     $("#s" + i + "_toggle").click(function() {
         screen_id = parseInt($(this).attr('id').slice(1, -7), 10);
@@ -210,7 +245,7 @@ $( document ).ready(function () {
         } else {
           delete screens_data["s" + screen_id];
         }
-        compute_vpu();
+        compute_vpu(vpuQuantity);
       });
 
       //TODO: https://github.com/shaheenhyderk/slideon
@@ -275,7 +310,12 @@ $( document ).ready(function () {
 		return true;
 	}
 
-  function compute_vpu() {
+  function compute_vpu(vpuQuantity = 1) {
+    if(vpuQuantity > 3) {
+      $("#messages").html("WHOA! Nice hardware! Aren't " + vpuQuantity + " VPUs too many?");
+    } else {
+      $("#messages").html("");
+    }
     const sorted = Object.keys(screens_data)
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
       .reduce((accumulator, key) => {
@@ -298,8 +338,6 @@ $( document ).ready(function () {
       $('#stats').append(" - layers capacity="+ properties.layers.toString());
     };
 
-    // Clear existing tables
-    var vpuQuantity = 3;
   	// Build VPU tables
   	for (var vpu_id = 1; vpu_id <= vpuQuantity; vpu_id++) {
   		var table = $('<table></table>');
@@ -324,55 +362,33 @@ $( document ).ready(function () {
     let current_position = [1, 1, 1, 0]; // row, column, vpu, color_id
     var screens_data_copy = deep_clone(screens_data); // Deep clone
   	for (const [screen, properties] of Object.entries(screens_data_copy)) {
-      // UGLY CODE: remove exceeding links crossing VPU border
-      var part_exceeding_vpu = deep_clone(properties);
-      var exceeding = new Array();
 
-      if(current_position[0] > 8) {
-        current_position[2]++;
-        current_position[0] = 1;
-        current_position[1] = 1;
-      }
-      if(current_position[1] > 8) {
-        current_position[2]++;
-        current_position[0] = 1;
-        current_position[1] = 1;
-      }
+      var remaining_properties = deep_clone(properties);
 
-      while(part_exceeding_vpu.links.reduce((a, b) => a + b, 0) + current_position[1] - 1 > 8) {
-        exceeding.push(part_exceeding_vpu.links.pop());
-      }
-      part_exceeding_vpu.links = exceeding;
-
-      current_position = fill_VPU(screen, properties, current_position);
-      if(current_position[2] > vpuQuantity) {
-        console.log("VPU resources exceeded");
-        break;
-      }
-      if(current_position[2] == vpuQuantity) {
-        var limit_reached = false;
-        if (current_position[0] > 8) {
-          console.log("VPU resource limit reached: no more layers available");
-          limit_reached = true;
+      while(remaining_properties.links.length > 0) {
+        if(current_position[0] > 8) {
+          current_position[2]++;
+          current_position[0] = 1;
+          current_position[1] = 1;
         }
         if(current_position[1] > 8) {
-          console.log("VPU resource limit reached: no more outputs available");
-          limit_reached = true;
+          current_position[2]++;
+          current_position[0] = 1;
+          current_position[1] = 1;
         }
-        if(limit_reached) {
-          break;
-        }
-      }
 
-      if(exceeding.length > 0) {
-        //console.log(part_exceeding_vpu)
-        //console.log(current_position)
-        current_position[3]-= part_exceeding_vpu.layers.length;
-        current_position = fill_VPU(screen, part_exceeding_vpu, current_position);
-      }
-      if(current_position[2] > vpuQuantity) {
-        console.log("Not enough VPUs");
-        break;
+        var start_position = current_position[1];
+
+        current_position = fill_VPU(screen, remaining_properties, current_position);
+
+        var exceeding = new Array();
+        while(remaining_properties.links.reduce((a, b) => a + b, 0) + start_position - 1 > 8) {
+          exceeding.unshift(remaining_properties.links.pop());
+        }
+        remaining_properties.links = exceeding;
+        if(exceeding.length > 0) {
+          current_position[3]-= remaining_properties.layers.length;
+        }
       }
   	}
   }
@@ -386,10 +402,6 @@ $( document ).ready(function () {
     var column = current_position[1];
     var vpu = current_position[2];
     var color_id = current_position[3];
-
-    if(screen == "s2") {
-      console.log(properties)
-    }
 
     var id = properties.id;
     var label = properties.label;
@@ -422,7 +434,7 @@ $( document ).ready(function () {
         column = 1;
       }
 
-			//TODO: GESTIRE 8+ OUTPUT LINKS O ATTRAVERSAMENTO VPU CON OUTPUT LINKS
+      // TODO: manage second VPU usage when 8+ out links
 			if(!isInsideInputLinks(row, column, out_links, layer_capacity, optimized_mode)) {
 				vpu++;
 				row = 1;
@@ -451,6 +463,28 @@ $( document ).ready(function () {
     }
 
     current_position = [row, column, vpu, color_id];
+/*
+    if(current_position[2] > vpuQuantity) {
+      console.log("VPU resources exceeded");
+    }
+    if(current_position[2] == vpuQuantity) {
+      var limit_reached = false;
+      if (current_position[0] > 8) {
+        console.log("VPU resource limit reached: no more layers available");
+        limit_reached = true;
+      }
+      if(current_position[1] > 8) {
+        console.log("VPU resource limit reached: no more outputs available");
+        limit_reached = true;
+      }
+      if(limit_reached) {
+
+      }
+    }
+    if(current_position[2] > vpuQuantity) {
+      console.log("Not enough VPUs");
+    }
+*/
     return current_position;
   }
 
@@ -521,7 +555,7 @@ $( document ).ready(function () {
           if(check_settings(new_settings)) {
             screens_data = new_settings;
             restore_settings();
-            compute_vpu();
+            compute_vpu(vpuQuantity);
           } else {
             console.log("Invalid restore file");
           }
@@ -538,8 +572,11 @@ $( document ).ready(function () {
 	</div>
 	<div class="column-right">
     <div>
-      <p id="download">Download screens config</p>
+      <button id="download">Download screens config</button>
+      <button id="addVPU">+1 VPU</button>
+      <button id="removeVPU">-1 VPU</button>
     </div>
+    <div id="messages"></div>
     <div>
       <form id="upload">
         <p>
