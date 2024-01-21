@@ -1,21 +1,24 @@
 <html>
 <head>
 <style>
+
 table, th, td {
   border: 1px solid;
   border-collapse: collapse;
   margin: 1em;
 }
-td {
-  padding: 10px;
-  width: 40px;
-  height: 40px;
-  text-align: center;
 
+td {
+  width: 12.5%;
+  height: 7vh;
+  width: 7vh;
+  text-align: center;
 }
+
 .layer {
   color: #0E0E0E;
 }
+
 body {
     background-color: #1b272f;
     color: #f2f2f3;
@@ -287,7 +290,7 @@ $( document ).ready(function () {
 		"#e0c7ce"];
 
 
-
+	// Set VPU cell to screen/region/layer
 	function useCell(vpu, row, column, screen, layer, color) {
 		$('#' + vpu + '-' + row + '-' + column).css("background-color", color);
 		$('#' + vpu + '-' + row + '-' + column).html('<p class="layer">S' + screen + '<br/>L' + layer + '</p>');
@@ -345,6 +348,8 @@ $( document ).ready(function () {
   			let row = $('<tr id="' + i + '"></tr>');
   			for (var j = 1; j <= 8; j++) {
   				var rowData = $('<td id="' + vpu_id + '-' + i + '-' + j + '"></td>').addClass('bar').text('');
+				var cellData = $('<span>a</span>').addClass('content').text('b');
+				rowData.append(cellData);
   				row.append(rowData);
   			}
   			table.append(row);
@@ -366,15 +371,15 @@ $( document ).ready(function () {
       var remaining_properties = deep_clone(properties);
 
       while(remaining_properties.links.length > 0) {
-        if(current_position[0] > 8) {
-          current_position[2]++;
-          current_position[0] = 1;
-          current_position[1] = 1;
+        if(current_position[0] > 8) { // We consumed all 8 rows
+          current_position[2]++;	// Go to next VPU
+          current_position[0] = 1;	// Start from first row
+          current_position[1] = 1;	// Start from first column
         }
-        if(current_position[1] > 8) {
-          current_position[2]++;
-          current_position[0] = 1;
-          current_position[1] = 1;
+        if(current_position[1] > 8) {	// We consumed all 8 columns
+          current_position[2]++;		// Go to next VPU
+          current_position[0] = 1;		// Start from first row
+          current_position[1] = 1;		// Start from first column
         }
 
         var start_position = current_position[1];
